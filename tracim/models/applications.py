@@ -43,7 +43,7 @@ calendar = Application(
     slug='calendar',
     fa_icon='calendar',
     hexcolor='#757575',
-    is_active=False,
+    is_active=True,
     config={},
     main_route='/#/workspaces/{workspace_id}/calendar',
 )
