@@ -45,7 +45,7 @@ calendar = Application(
     hexcolor='#757575',
     is_active=True,
     config={},
-    main_route='/#/workspaces/{workspace_id}/calendar',
+    main_route='',
 )
 
 thread = Application(
