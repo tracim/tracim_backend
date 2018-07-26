@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import datetime
 import transaction
 import pytest
 
@@ -128,10 +128,20 @@ class TestContentApi(DefaultTest):
             session=self.session,
             config=self.app_config,
         )
-        item = api.create(ContentType.Folder, workspace, None,
-                          'not_deleted', True)
-        item2 = api.create(ContentType.Folder, workspace, None,
-                           'to_delete', True)
+        item = api.create(
+            content_type=ContentType.Folder,
+            workspace=workspace,
+            parent=None,
+            label='not_deleted',
+            do_save=True
+        )
+        item2 = api.create(
+            content_type=ContentType.Folder,
+            workspace=workspace,
+            parent=None,
+            label='to_delete',
+            do_save=True
+        )
         uid = user.user_id
         wid = workspace.workspace_id
         transaction.commit()
@@ -229,10 +239,20 @@ class TestContentApi(DefaultTest):
             session=self.session,
             config=self.app_config,
         )
-        item = api.create(ContentType.Folder, workspace, None,
-                          'not_archived', True)
-        item2 = api.create(ContentType.Folder, workspace, None,
-                           'to_archive', True)
+        item = api.create(
+            content_type=ContentType.Folder,
+            workspace=workspace,
+            parent=None,
+            label='not_archived',
+            do_save=True
+        )
+        item2 = api.create(
+            content_type=ContentType.Folder,
+            workspace=workspace,
+            parent=None,
+            label='to_archive',
+            do_save=True
+        )
         uid = user.user_id
         wid = workspace.workspace_id
         transaction.commit()
@@ -337,9 +357,20 @@ class TestContentApi(DefaultTest):
             session=self.session,
             config=self.app_config,
         )
-        item = api.create(ContentType.Folder, workspace, None,
-                          'thefolder', True)
-        item2 = api.create(ContentType.File, workspace, None, 'thefile', True)
+        item = api.create(
+            content_type=ContentType.Folder,
+            workspace=workspace,
+            parent=None,
+            label='thefolder',
+            do_save=True
+        )
+        item2 = api.create(
+            content_type=ContentType.File,
+            workspace=workspace,
+            parent=None,
+            label='thefile',
+            do_save=True
+        )
         uid = user.user_id
         wid = workspace.workspace_id
         transaction.commit()
@@ -475,7 +506,7 @@ class TestContentApi(DefaultTest):
             session=self.session,
             config=self.app_config,
         )
-        c = api.create(ContentType.Folder, workspace, None, 'parent', True)
+        c = api.create(ContentType.Folder, workspace, None, 'parent', '', True)
         with new_revision(
             session=self.session,
             tm=transaction.manager,
@@ -515,7 +546,7 @@ class TestContentApi(DefaultTest):
             session=self.session,
             config=self.app_config,
         )
-        c = api.create(ContentType.Folder, workspace, None, 'parent', True)
+        c = api.create(ContentType.Folder, workspace, None, 'parent', '', True)
         with new_revision(
             session=self.session,
             tm=transaction.manager,
@@ -625,6 +656,7 @@ class TestContentApi(DefaultTest):
             workspace,
             None,
             'folder a',
+            '',
             True
         )
         with self.session.no_autoflush:
@@ -661,6 +693,7 @@ class TestContentApi(DefaultTest):
             workspace2,
             None,
             'folder b',
+            '',
             True
         )
 
@@ -744,6 +777,7 @@ class TestContentApi(DefaultTest):
             workspace,
             None,
             'folder a',
+            '',
             True
         )
         with self.session.no_autoflush:
@@ -780,6 +814,7 @@ class TestContentApi(DefaultTest):
             workspace2,
             None,
             'folder b',
+            '',
             True
         )
         api2.copy(
@@ -860,6 +895,7 @@ class TestContentApi(DefaultTest):
             workspace,
             None,
             'folder a',
+            '',
             True
         )
         with self.session.no_autoflush:
@@ -1248,8 +1284,13 @@ class TestContentApi(DefaultTest):
             config=self.app_config,
         )
 
-        p = api.create(ContentType.Page, workspace, None,
-                       'this_is_a_page', True)
+        p = api.create(
+            content_type=ContentType.Page,
+            workspace=workspace,
+            parent=None,
+            label='this_is_a_page',
+            do_save=True
+        )
 
         u1id = user1.user_id
         u2id = user2.user_id
@@ -1453,8 +1494,13 @@ class TestContentApi(DefaultTest):
             session=self.session,
             config=self.app_config,
         )
-        p = api.create(ContentType.File, workspace, None,
-                       'this_is_a_page', True)
+        p = api.create(
+            content_type=ContentType.File,
+            workspace=workspace,
+            parent=None,
+            label='this_is_a_page',
+            do_save=True
+        )
 
         u1id = user1.user_id
         u2id = user2.user_id
@@ -1666,8 +1712,13 @@ class TestContentApi(DefaultTest):
             show_archived=True,
             config=self.app_config,
         )
-        p = api.create(ContentType.File, workspace, None,
-                       'this_is_a_page', True)
+        p = api.create(
+            content_type=ContentType.File,
+            workspace=workspace,
+            parent=None,
+            label='this_is_a_page',
+            do_save=True
+        )
 
         u1id = user1.user_id
         u2id = user2.user_id
@@ -1822,8 +1873,13 @@ class TestContentApi(DefaultTest):
             config=self.app_config,
             show_deleted=True,
         )
-        p = api.create(ContentType.File, workspace, None,
-                       'this_is_a_page', True)
+        p = api.create(
+            content_type=ContentType.File,
+            workspace=workspace,
+            parent=None,
+            label='this_is_a_page',
+            do_save=True
+        )
 
         u1id = user1.user_id
         u2id = user2.user_id
@@ -1921,6 +1977,360 @@ class TestContentApi(DefaultTest):
         eq_(ActionDescription.UNDELETION, updated2.revision_type)
         eq_(u1id, updated2.owner_id)
 
+    def test_unit__get_last_active__ok__nominal_case(self):
+        uapi = UserApi(
+            session=self.session,
+            config=self.app_config,
+            current_user=None,
+        )
+        group_api = GroupApi(
+            current_user=None,
+            session=self.session,
+            config=self.app_config,
+        )
+        groups = [group_api.get_one(Group.TIM_USER),
+                  group_api.get_one(Group.TIM_MANAGER),
+                  group_api.get_one(Group.TIM_ADMIN)]
+
+        user = uapi.create_minimal_user(email='this.is@user',
+                                        groups=groups, save_now=True)
+        workspace = WorkspaceApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        ).create_workspace(
+            'test workspace',
+            save_now=True
+        )
+        workspace2 = WorkspaceApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        ).create_workspace(
+            'test workspace2',
+            save_now=True
+        )
+
+        api = ContentApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        )
+        main_folder_workspace2 = api.create(ContentType.Folder, workspace2, None, 'Hepla', '', True)  # nopep8
+        main_folder = api.create(ContentType.Folder, workspace, None, 'this is randomized folder', '', True)  # nopep8
+        # creation order test
+        firstly_created = api.create(ContentType.Page, workspace, main_folder, 'creation_order_test', '', True)  # nopep8
+        secondly_created = api.create(ContentType.Page, workspace, main_folder, 'another creation_order_test', '', True)  # nopep8
+        # update order test
+        firstly_created_but_recently_updated = api.create(ContentType.Page, workspace, main_folder, 'update_order_test', '', True)  # nopep8
+        secondly_created_but_not_updated = api.create(ContentType.Page, workspace, main_folder, 'another update_order_test', '', True)  # nopep8
+        with new_revision(
+            session=self.session,
+            tm=transaction.manager,
+            content=firstly_created_but_recently_updated,
+        ):
+            firstly_created_but_recently_updated.description = 'Just an update'
+        api.save(firstly_created_but_recently_updated)
+        # comment change order
+        firstly_created_but_recently_commented = api.create(ContentType.Page, workspace, main_folder, 'this is randomized label content', '', True)  # nopep8
+        secondly_created_but_not_commented = api.create(ContentType.Page, workspace, main_folder, 'this is another randomized label content', '', True)  # nopep8
+        comments = api.create_comment(workspace, firstly_created_but_recently_commented, 'juste a super comment', True)  # nopep8
+
+        content_workspace_2 = api.create(ContentType.Page, workspace2 ,main_folder_workspace2, 'content_workspace_2', '',True)  # nopep8
+        last_actives = api.get_last_active()
+        assert len(last_actives) == 9
+        # workspace_2 content
+        assert last_actives[0] == content_workspace_2
+        # comment is newest than page2
+        assert last_actives[1] == firstly_created_but_recently_commented
+        assert last_actives[2] == secondly_created_but_not_commented
+        # last updated content is newer than other one despite creation
+        # of the other is more recent
+        assert last_actives[3] == firstly_created_but_recently_updated
+        assert last_actives[4] == secondly_created_but_not_updated
+        # creation order is inverted here as last created is last active
+        assert last_actives[5] == secondly_created
+        assert last_actives[6] == firstly_created
+        # folder subcontent modification does not change folder order
+        assert last_actives[7] == main_folder
+        # folder subcontent modification does not change folder order
+        # (workspace2)
+        assert last_actives[8] == main_folder_workspace2
+
+    def test_unit__get_last_active__ok__workspace_filter_workspace_full(self):
+        uapi = UserApi(
+            session=self.session,
+            config=self.app_config,
+            current_user=None,
+        )
+        group_api = GroupApi(
+            current_user=None,
+            session=self.session,
+            config=self.app_config,
+        )
+        groups = [group_api.get_one(Group.TIM_USER),
+                  group_api.get_one(Group.TIM_MANAGER),
+                  group_api.get_one(Group.TIM_ADMIN)]
+
+        user = uapi.create_minimal_user(email='this.is@user',
+                                        groups=groups, save_now=True)
+        workspace = WorkspaceApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        ).create_workspace(
+            'test workspace',
+            save_now=True
+        )
+
+        api = ContentApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        )
+        main_folder = api.create(ContentType.Folder, workspace, None, 'this is randomized folder', '', True)  # nopep8
+        # creation order test
+        firstly_created = api.create(ContentType.Page, workspace, main_folder, 'creation_order_test', '', True)  # nopep8
+        secondly_created = api.create(ContentType.Page, workspace, main_folder, 'another creation_order_test', '', True)  # nopep8
+        # update order test
+        firstly_created_but_recently_updated = api.create(ContentType.Page, workspace, main_folder, 'update_order_test', '', True)  # nopep8
+        secondly_created_but_not_updated = api.create(ContentType.Page, workspace, main_folder, 'another update_order_test', '', True)  # nopep8
+        with new_revision(
+            session=self.session,
+            tm=transaction.manager,
+            content=firstly_created_but_recently_updated,
+        ):
+            firstly_created_but_recently_updated.description = 'Just an update'
+        api.save(firstly_created_but_recently_updated)
+        # comment change order
+        firstly_created_but_recently_commented = api.create(ContentType.Page, workspace, main_folder, 'this is randomized label content', '', True)  # nopep8
+        secondly_created_but_not_commented = api.create(ContentType.Page, workspace, main_folder, 'this is another randomized label content', '', True)  # nopep8
+        comments = api.create_comment(workspace, firstly_created_but_recently_commented, 'juste a super comment', True)  # nopep8
+
+        last_actives = api.get_last_active(workspace=workspace)
+        assert len(last_actives) == 7
+        # comment is newest than page2
+        assert last_actives[0] == firstly_created_but_recently_commented
+        assert last_actives[1] == secondly_created_but_not_commented
+        # last updated content is newer than other one despite creation
+        # of the other is more recent
+        assert last_actives[2] == firstly_created_but_recently_updated
+        assert last_actives[3] == secondly_created_but_not_updated
+        # creation order is inverted here as last created is last active
+        assert last_actives[4] == secondly_created
+        assert last_actives[5] == firstly_created
+        # folder subcontent modification does not change folder order
+        assert last_actives[6] == main_folder
+
+    def test_unit__get_last_active__ok__workspace_filter_workspace_content_ids(self):
+        uapi = UserApi(
+            session=self.session,
+            config=self.app_config,
+            current_user=None,
+        )
+        group_api = GroupApi(
+            current_user=None,
+            session=self.session,
+            config=self.app_config,
+        )
+        groups = [group_api.get_one(Group.TIM_USER),
+                  group_api.get_one(Group.TIM_MANAGER),
+                  group_api.get_one(Group.TIM_ADMIN)]
+
+        user = uapi.create_minimal_user(email='this.is@user',
+                                        groups=groups, save_now=True)
+        workspace = WorkspaceApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        ).create_workspace(
+            'test workspace',
+            save_now=True
+        )
+
+        api = ContentApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        )
+        main_folder = api.create(ContentType.Folder, workspace, None, 'this is randomized folder', '', True)  # nopep8
+        # creation order test
+        firstly_created = api.create(ContentType.Page, workspace, main_folder, 'creation_order_test', '', True)  # nopep8
+        secondly_created = api.create(ContentType.Page, workspace, main_folder, 'another creation_order_test', '', True)  # nopep8
+        # update order test
+        firstly_created_but_recently_updated = api.create(ContentType.Page, workspace, main_folder, 'update_order_test', '', True)  # nopep8
+        secondly_created_but_not_updated = api.create(ContentType.Page, workspace, main_folder, 'another update_order_test', '', True)  # nopep8
+        with new_revision(
+            session=self.session,
+            tm=transaction.manager,
+            content=firstly_created_but_recently_updated,
+        ):
+            firstly_created_but_recently_updated.description = 'Just an update'
+        api.save(firstly_created_but_recently_updated)
+        # comment change order
+        firstly_created_but_recently_commented = api.create(ContentType.Page, workspace, main_folder, 'this is randomized label content', '', True)  # nopep8
+        secondly_created_but_not_commented = api.create(ContentType.Page, workspace, main_folder, 'this is another randomized label content', '', True)  # nopep8
+        comments = api.create_comment(workspace, firstly_created_but_recently_commented, 'juste a super comment', True)  # nopep8
+
+        selected_contents = [
+            firstly_created_but_recently_commented,
+            firstly_created_but_recently_updated,
+            firstly_created,
+            main_folder,
+        ]
+        content_ids = [content.content_id for content in selected_contents]
+        last_actives = api.get_last_active(
+            workspace=workspace,
+            content_ids=content_ids,
+        )
+        assert len(last_actives) == 4
+        # comment is newest than page2
+        assert last_actives[0] == firstly_created_but_recently_commented
+        assert secondly_created_but_not_commented not in last_actives
+        # last updated content is newer than other one despite creation
+        # of the other is more recent
+        assert last_actives[1] == firstly_created_but_recently_updated
+        assert secondly_created_but_not_updated not in last_actives
+        # creation order is inverted here as last created is last active
+        assert secondly_created not in last_actives
+        assert last_actives[2] == firstly_created
+        # folder subcontent modification does not change folder order
+        assert last_actives[3] == main_folder
+
+    def test_unit__get_last_active__ok__workspace_filter_workspace_limit_2_multiples_times(self):  # nopep8
+        uapi = UserApi(
+            session=self.session,
+            config=self.app_config,
+            current_user=None,
+        )
+        group_api = GroupApi(
+            current_user=None,
+            session=self.session,
+            config=self.app_config,
+        )
+        groups = [group_api.get_one(Group.TIM_USER),
+                  group_api.get_one(Group.TIM_MANAGER),
+                  group_api.get_one(Group.TIM_ADMIN)]
+
+        user = uapi.create_minimal_user(email='this.is@user',
+                                        groups=groups, save_now=True)
+        workspace = WorkspaceApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        ).create_workspace(
+            'test workspace',
+            save_now=True
+        )
+
+        api = ContentApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        )
+        main_folder = api.create(ContentType.Folder, workspace, None, 'this is randomized folder', '', True)  # nopep8
+        # creation order test
+        firstly_created = api.create(ContentType.Page, workspace, main_folder, 'creation_order_test', '', True)  # nopep8
+        secondly_created = api.create(ContentType.Page, workspace, main_folder, 'another creation_order_test', '', True)  # nopep8
+        # update order test
+        firstly_created_but_recently_updated = api.create(ContentType.Page, workspace, main_folder, 'update_order_test', '', True)  # nopep8
+        secondly_created_but_not_updated = api.create(ContentType.Page, workspace, main_folder, 'another update_order_test', '', True)  # nopep8
+        with new_revision(
+            session=self.session,
+            tm=transaction.manager,
+            content=firstly_created_but_recently_updated,
+        ):
+            firstly_created_but_recently_updated.description = 'Just an update'
+        api.save(firstly_created_but_recently_updated)
+        # comment change order
+        firstly_created_but_recently_commented = api.create(ContentType.Page, workspace, main_folder, 'this is randomized label content', '', True)  # nopep8
+        secondly_created_but_not_commented = api.create(ContentType.Page, workspace, main_folder, 'this is another randomized label content', '', True)  # nopep8
+        comments = api.create_comment(workspace, firstly_created_but_recently_commented, 'juste a super comment', True)  # nopep8
+
+        last_actives = api.get_last_active(workspace=workspace, limit=2, before_datetime=datetime.datetime.now())  # nopep8
+        assert len(last_actives) == 2
+        # comment is newest than page2
+        assert last_actives[0] == firstly_created_but_recently_commented
+        assert last_actives[1] == secondly_created_but_not_commented
+
+        last_actives = api.get_last_active(workspace=workspace, limit=2, before_datetime=last_actives[1].get_simple_last_activity_date())  # nopep8
+        assert len(last_actives) == 2
+        # last updated content is newer than other one despite creation
+        # of the other is more recent
+        assert last_actives[0] == firstly_created_but_recently_updated
+        assert last_actives[1] == secondly_created_but_not_updated
+
+        last_actives = api.get_last_active(workspace=workspace, limit=2, before_datetime=last_actives[1].get_simple_last_activity_date())  # nopep8
+        assert len(last_actives) == 2
+        # creation order is inverted here as last created is last active
+        assert last_actives[0] == secondly_created
+        assert last_actives[1] == firstly_created
+
+        last_actives = api.get_last_active(workspace=workspace, limit=2, before_datetime=last_actives[1].get_simple_last_activity_date())  # nopep8
+        assert len(last_actives) == 1
+        # folder subcontent modification does not change folder order
+        assert last_actives[0] == main_folder
+
+    def test_unit__get_last_active__ok__workspace_filter_workspace_empty(self):
+        uapi = UserApi(
+            session=self.session,
+            config=self.app_config,
+            current_user=None,
+        )
+        group_api = GroupApi(
+            current_user=None,
+            session=self.session,
+            config=self.app_config,
+        )
+        groups = [group_api.get_one(Group.TIM_USER),
+                  group_api.get_one(Group.TIM_MANAGER),
+                  group_api.get_one(Group.TIM_ADMIN)]
+
+        user = uapi.create_minimal_user(email='this.is@user',
+                                        groups=groups, save_now=True)
+        workspace = WorkspaceApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        ).create_workspace(
+            'test workspace',
+            save_now=True
+        )
+        workspace2 = WorkspaceApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        ).create_workspace(
+            'test workspace2',
+            save_now=True
+        )
+        api = ContentApi(
+            current_user=user,
+            session=self.session,
+            config=self.app_config,
+        )
+        main_folder = api.create(ContentType.Folder, workspace, None, 'this is randomized folder', '', True)  # nopep8
+        # creation order test
+        firstly_created = api.create(ContentType.Page, workspace, main_folder, 'creation_order_test', '', True)  # nopep8
+        secondly_created = api.create(ContentType.Page, workspace, main_folder, 'another creation_order_test', '', True)  # nopep8
+        # update order test
+        firstly_created_but_recently_updated = api.create(ContentType.Page, workspace, main_folder, 'update_order_test', '', True)  # nopep8
+        secondly_created_but_not_updated = api.create(ContentType.Page, workspace, main_folder, 'another update_order_test', '', True)  # nopep8
+        with new_revision(
+            session=self.session,
+            tm=transaction.manager,
+            content=firstly_created_but_recently_updated,
+        ):
+            firstly_created_but_recently_updated.description = 'Just an update'
+        api.save(firstly_created_but_recently_updated)
+        # comment change order
+        firstly_created_but_recently_commented = api.create(ContentType.Page, workspace, main_folder, 'this is randomized label content', '', True)  # nopep8
+        secondly_created_but_not_commented = api.create(ContentType.Page, workspace, main_folder, 'this is another randomized label content', '', True)  # nopep8
+        comments = api.create_comment(workspace, firstly_created_but_recently_commented, 'juste a super comment', True)  # nopep8
+
+        last_actives = api.get_last_active(workspace=workspace2)
+        assert len(last_actives) == 0
+
     def test_search_in_label(self):
         # HACK - D.A. - 2015-03-09
         # This test is based on a bug which does NOT return results found
@@ -1957,9 +2367,9 @@ class TestContentApi(DefaultTest):
             config=self.app_config,
         )
         a = api.create(ContentType.Folder, workspace, None,
-                       'this is randomized folder', True)
+                       'this is randomized folder', '', True)
         p = api.create(ContentType.Page, workspace, a,
-                       'this is randomized label content', True)
+                       'this is randomized label content', '', True)
 
         with new_revision(
             session=self.session,
@@ -2013,9 +2423,9 @@ class TestContentApi(DefaultTest):
             config=self.app_config,
         )
         a = api.create(ContentType.Folder, workspace, None,
-                       'this is randomized folder', True)
+                       'this is randomized folder', '', True)
         p = api.create(ContentType.Page, workspace, a,
-                       'this is dummy label content', True)
+                       'this is dummy label content', '', True)
 
         with new_revision(
             tm=transaction.manager,
@@ -2065,11 +2475,27 @@ class TestContentApi(DefaultTest):
             session=self.session,
             config=self.app_config,
         )
-        a = api.create(ContentType.Folder, workspace, None,
-                       'this is randomized folder', True)
-        p1 = api.create(ContentType.Page, workspace, a,
-                        'this is dummy label content', True)
-        p2 = api.create(ContentType.Page, workspace, a, 'Hey ! Jon !', True)
+        a = api.create(
+            content_type=ContentType.Folder,
+            workspace=workspace,
+            parent=None,
+            label='this is randomized folder',
+            do_save=True
+        )
+        p1 = api.create(
+            content_type=ContentType.Page,
+            workspace=workspace,
+            parent=a,
+            label='this is dummy label content',
+            do_save=True
+        )
+        p2 = api.create(
+            content_type=ContentType.Page,
+            workspace=workspace,
+            parent=a,
+            label='Hey ! Jon !',
+            do_save=True
+        )
 
         with new_revision(
             session=self.session,

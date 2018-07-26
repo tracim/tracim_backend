@@ -1,18 +1,33 @@
 # coding=utf-8
 import typing
 from datetime import datetime
+from enum import Enum
 
 from slugify import slugify
 from sqlalchemy.orm import Session
 from tracim import CFG
+from tracim.config import PreviewDim
 from tracim.models import User
 from tracim.models.auth import Profile
 from tracim.models.data import Content
 from tracim.models.data import ContentRevisionRO
-from tracim.models.data import Workspace, UserRoleInWorkspace
+from tracim.models.data import Workspace
+from tracim.models.data import UserRoleInWorkspace
+from tracim.models.roles import WorkspaceRoles
 from tracim.models.workspace_menu_entries import default_workspace_menu_entry
 from tracim.models.workspace_menu_entries import WorkspaceMenuEntry
 from tracim.models.contents import ContentTypeLegacy as ContentType
+
+
+class PreviewAllowedDim(object):
+
+    def __init__(
+            self,
+            restricted:bool,
+            dimensions: typing.List[PreviewDim]
+    ) -> None:
+        self.restricted = restricted
+        self.dimensions = dimensions
 
 
 class MoveParams(object):
@@ -34,6 +49,67 @@ class LoginCredentials(object):
         self.password = password
 
 
+class SetEmail(object):
+    """
+    Just an email
+    """
+    def __init__(self, loggedin_user_password: str, email: str) -> None:
+        self.loggedin_user_password = loggedin_user_password
+        self.email = email
+
+
+class SetPassword(object):
+    """
+    Just an password
+    """
+    def __init__(self,
+        loggedin_user_password: str,
+        new_password: str,
+        new_password2: str
+    ) -> None:
+        self.loggedin_user_password = loggedin_user_password
+        self.new_password = new_password
+        self.new_password2 = new_password2
+
+
+class UserInfos(object):
+    """
+    Just some user infos
+    """
+    def __init__(self, timezone: str, public_name: str) -> None:
+        self.timezone = timezone
+        self.public_name = public_name
+
+
+class UserProfile(object):
+    """
+    Just some user infos
+    """
+    def __init__(self, profile: str) -> None:
+        self.profile = profile
+
+
+class UserCreation(object):
+    """
+    Just some user infos
+    """
+    def __init__(
+            self,
+            email: str,
+            password: str,
+            public_name: str,
+            timezone: str,
+            profile: str,
+            email_notification: str,
+    ) -> None:
+        self.email = email
+        self.password = password
+        self.public_name = public_name
+        self.timezone = timezone
+        self.profile = profile
+        self.email_notification = email_notification
+
+
 class WorkspaceAndContentPath(object):
     """
     Paths params with workspace id and content_id model
@@ -41,6 +117,58 @@ class WorkspaceAndContentPath(object):
     def __init__(self, workspace_id: int, content_id: int) -> None:
         self.content_id = content_id
         self.workspace_id = workspace_id
+
+
+class WorkspaceAndContentRevisionPath(object):
+    """
+    Paths params with workspace id and content_id model
+    """
+    def __init__(self, workspace_id: int, content_id: int, revision_id) -> None:
+        self.content_id = content_id
+        self.revision_id = revision_id
+        self.workspace_id = workspace_id
+
+
+class ContentPreviewSizedPath(object):
+    """
+    Paths params with workspace id and content_id, width, heigth
+    """
+    def __init__(self, workspace_id: int, content_id: int, width: int, height: int) -> None:  # nopep8
+        self.content_id = content_id
+        self.workspace_id = workspace_id
+        self.width = width
+        self.height = height
+
+
+class RevisionPreviewSizedPath(object):
+    """
+    Paths params with workspace id and content_id, revision_id width, heigth
+    """
+    def __init__(self, workspace_id: int, content_id: int, revision_id: int, width: int, height: int) -> None:  # nopep8
+        self.content_id = content_id
+        self.revision_id = revision_id
+        self.workspace_id = workspace_id
+        self.width = width
+        self.height = height
+
+
+class WorkspaceAndUserPath(object):
+    """
+    Paths params with workspace id and user_id
+    """
+    def __init__(self, workspace_id: int, user_id: int):
+        self.workspace_id = workspace_id
+        self.user_id = workspace_id
+
+
+class UserWorkspaceAndContentPath(object):
+    """
+    Paths params with user_id, workspace id and content_id model
+    """
+    def __init__(self, user_id: int, workspace_id: int, content_id: int) -> None:  # nopep8
+        self.content_id = content_id
+        self.workspace_id = workspace_id
+        self.user_id = user_id
 
 
 class CommentPath(object):
@@ -58,21 +186,97 @@ class CommentPath(object):
         self.comment_id = comment_id
 
 
+class PageQuery(object):
+    """
+    Page query model
+    """
+    def __init__(
+            self,
+            page: int = 0
+    ):
+        self.page = page
+
+
 class ContentFilter(object):
     """
     Content filter model
     """
     def __init__(
             self,
+            workspace_id: int = None,
             parent_id: int = None,
             show_archived: int = 0,
             show_deleted: int = 0,
             show_active: int = 1,
+            content_type: str = None,
+            offset: int = None,
+            limit: int = None,
     ) -> None:
         self.parent_id = parent_id
+        self.workspace_id = workspace_id
         self.show_archived = bool(show_archived)
         self.show_deleted = bool(show_deleted)
         self.show_active = bool(show_active)
+        self.limit = limit
+        self.offset = offset
+        self.content_type = content_type
+
+
+class ActiveContentFilter(object):
+    def __init__(
+            self,
+            limit: int = None,
+            before_datetime: datetime = None,
+    ):
+        self.limit = limit
+        self.before_datetime = before_datetime
+
+
+class ContentIdsQuery(object):
+    def __init__(
+            self,
+            contents_ids: typing.List[int] = None,
+    ):
+        self.contents_ids = contents_ids
+
+
+class RoleUpdate(object):
+    """
+    Update role
+    """
+    def __init__(
+        self,
+        role: str,
+    ):
+        self.role = role
+
+
+class WorkspaceMemberInvitation(object):
+    """
+    Workspace Member Invitation
+    """
+    def __init__(
+        self,
+        user_id: int,
+        user_email_or_public_name: str,
+        role: str,
+    ):
+        self.role = role
+        self.user_email_or_public_name = user_email_or_public_name
+        self.user_id = user_id
+
+
+class WorkspaceUpdate(object):
+    """
+    Update workspace
+    """
+    def __init__(
+        self,
+        label: str,
+        description: str,
+    ):
+        self.label = label
+        self.description = description
 
 
 class ContentCreation(object):
@@ -83,9 +287,11 @@ class ContentCreation(object):
             self,
             label: str,
             content_type: str,
+            parent_id: typing.Optional[int] = None,
     ) -> None:
         self.label = label
         self.content_type = content_type
+        self.parent_id = parent_id
 
 
 class CommentCreation(object):
@@ -110,9 +316,9 @@ class SetContentStatus(object):
         self.status = status
 
 
-class HTMLDocumentUpdate(object):
+class TextBasedContentUpdate(object):
     """
-    Html Document update model
+    TextBasedContent update model
     """
     def __init__(
             self,
@@ -123,17 +329,11 @@ class HTMLDocumentUpdate(object):
         self.raw_content = raw_content
 
 
-class ThreadUpdate(object):
-    """
-    Thread update model
-    """
-    def __init__(
-            self,
-            label: str,
-            raw_content: str,
-    ) -> None:
-        self.label = label
-        self.raw_content = raw_content
+class TypeUser(Enum):
+    """Params used to find user"""
+    USER_ID = 'found_id'
+    EMAIL = 'found_email'
+    PUBLIC_NAME = 'found_public_name'
 
 
 class UserInContext(object):
@@ -265,10 +465,16 @@ class UserRoleWorkspaceInContext(object):
             user_role: UserRoleInWorkspace,
             dbsession: Session,
             config: CFG,
+            # Extended params
+            newly_created: bool = None,
+            email_sent: bool = None
     )-> None:
         self.user_role = user_role
         self.dbsession = dbsession
         self.config = config
+        # Extended params
+        self.newly_created = newly_created
+        self.email_sent = email_sent
 
     @property
     def user_id(self) -> int:
@@ -308,7 +514,11 @@ class UserRoleWorkspaceInContext(object):
         'contributor', 'content-manager', 'workspace-manager'
         :return: user workspace role as slug.
         """
-        return UserRoleInWorkspace.SLUG[self.user_role.role]
+        return WorkspaceRoles.get_role_from_level(self.user_role.role).slug
+
+    @property
+    def is_active(self) -> bool:
+        return self.user.is_active
 
     @property
     def user(self) -> UserInContext:
@@ -340,19 +550,16 @@ class ContentInContext(object):
     Interface to get Content data and Content data related to context.
     """
 
-    def __init__(self, content: Content, dbsession: Session, config: CFG):
+    def __init__(self, content: Content, dbsession: Session, config: CFG, user: User=None):  # nopep8
         self.content = content
         self.dbsession = dbsession
         self.config = config
+        self._user = user
 
     # Default
     @property
     def content_id(self) -> int:
         return self.content.content_id
-
-    @property
-    def id(self) -> int:
-        return self.content_id
 
     @property
     def parent_id(self) -> int:
@@ -440,6 +647,11 @@ class ContentInContext(object):
     def slug(self):
         return slugify(self.content.label)
 
+    @property
+    def read_by_user(self):
+        assert self._user
+        return not self.content.has_new_information_for(self._user)
+
 
 class RevisionInContext(object):
     """
@@ -458,10 +670,6 @@ class RevisionInContext(object):
         return self.revision.content_id
 
     @property
-    def id(self) -> int:
-        return self.content_id
-
-    @property
     def parent_id(self) -> int:
         """
         Return parent_id of the content
@@ -475,6 +683,10 @@ class RevisionInContext(object):
     @property
     def label(self) -> str:
         return self.revision.label
+
+    @property
+    def revision_type(self) -> str:
+        return self.revision.revision_type
 
     @property
     def content_type(self) -> str:

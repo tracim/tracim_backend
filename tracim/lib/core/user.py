@@ -1,21 +1,25 @@
 # -*- coding: utf-8 -*-
-import threading
 from smtplib import SMTPException
 
 import transaction
 import typing as typing
-
-from tracim.exceptions import NotificationNotSend
-from tracim.lib.mail_notifier.notifier import get_email_manager
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import NoResultFound
 
 from tracim import CFG
 from tracim.models.auth import User
 from tracim.models.auth import Group
-from sqlalchemy.orm.exc import NoResultFound
-from tracim.exceptions import WrongUserPassword, UserDoesNotExist
+from tracim.exceptions import NoUserSetted
+from tracim.exceptions import PasswordDoNotMatch
+from tracim.exceptions import EmailValidationFailed
+from tracim.exceptions import UserDoesNotExist
+from tracim.exceptions import WrongUserPassword
 from tracim.exceptions import AuthenticationFailed
+from tracim.exceptions import NotificationNotSend
+from tracim.exceptions import UserNotActive
 from tracim.models.context_models import UserInContext
+from tracim.lib.mail_notifier.notifier import get_email_manager
+from tracim.models.context_models import TypeUser
 
 
 class UserApi(object):
@@ -68,7 +72,17 @@ class UserApi(object):
             raise UserDoesNotExist('User "{}" not found in database'.format(email)) from exc  # nopep8
         return user
 
+    def get_one_by_public_name(self, public_name: str) -> User:
+        """
+        Get one user by public_name
+        """
+        try:
+            user = self._base_query().filter(User.display_name == public_name).one()
+        except NoResultFound as exc:
+            raise UserDoesNotExist('User "{}" not found in database'.format(public_name)) from exc  # nopep8
+        return user
     # FIXME - G.M - 24-04-2018 - Duplicate method with get_one.
+
     def get_one_by_id(self, id: int) -> User:
         return self.get_one(user_id=id)
 
@@ -82,6 +96,40 @@ class UserApi(object):
 
     def get_all(self) -> typing.Iterable[User]:
         return self._session.query(User).order_by(User.display_name).all()
+
+    def find(
+            self,
+            user_id: int=None,
+            email: str=None,
+            public_name: str=None
+    ) -> typing.Tuple[TypeUser, User]:
+        """
+        Find existing user from all theses params.
+        Check is made in this order: user_id, email, public_name
+        If no user found raise UserDoesNotExist exception
+        """
+        user = None
+
+        if user_id:
+            try:
+                user = self.get_one(user_id)
+                return TypeUser.USER_ID, user
+            except UserDoesNotExist:
+                pass
+        if email:
+            try:
+                user = self.get_one_by_email(email)
+                return TypeUser.EMAIL, user
+            except UserDoesNotExist:
+                pass
+        if public_name:
+            try:
+                user = self.get_one_by_public_name(public_name)
+                return TypeUser.PUBLIC_NAME, user
+            except UserDoesNotExist:
+                pass
+
+        raise UserDoesNotExist('User not found with any of given params.')
 
     # Check methods
 
@@ -103,6 +151,8 @@ class UserApi(object):
         """
         try:
             user = self.get_one_by_email(email)
+            if not user.is_active:
+                raise UserNotActive('User "{}" is not active'.format(email))
             if user.validate_password(password):
                 return user
             else:
@@ -111,6 +161,81 @@ class UserApi(object):
             raise AuthenticationFailed('User "{}" authentication failed'.format(email)) from exc  # nopep8
 
     # Actions
+    def set_password(
+            self,
+            user: User,
+            loggedin_user_password: str,
+            new_password: str,
+            new_password2: str,
+            do_save: bool=True
+    ):
+        """
+        Set User password if loggedin user password is correct
+        and both new_password are the same.
+        :param user: User who need password changed
+        :param loggedin_user_password: cleartext password of logged user (not
+        same as user)
+        :param new_password: new password for user
+        :param new_password2: should be same as new_password
+        :param do_save: should we save new user password ?
+        :return:
+        """
+        if not self._user:
+            raise NoUserSetted('Current User should be set in UserApi to use this method')  # nopep8
+        if not self._user.validate_password(loggedin_user_password):  # nopep8
+            raise WrongUserPassword(
+                'Wrong password for authenticated user {}'. format(self._user.user_id)  # nopep8
+            )
+        if new_password != new_password2:
+            raise PasswordDoNotMatch('Passwords given are different')
+
+        self.update(
+            user=user,
+            password=new_password,
+            do_save=do_save,
+        )
+        if do_save:
+            # TODO - G.M - 2018-07-24 - Check why commit is needed here
+            transaction.commit()
+        return user
+
+    def set_email(
+            self,
+            user: User,
+            loggedin_user_password: str,
+            email: str,
+            do_save: bool = True
+    ):
+        """
+        Set email address of user if loggedin user password is correct
+        :param user: User who need email changed
+        :param loggedin_user_password: cleartext password of logged user (not
+        same as user)
+        :param email:
+        :param do_save:
+        :return:
+        """
+        if not self._user:
+            raise NoUserSetted('Current User should be set in UserApi to use this method')  # nopep8
+        if not self._user.validate_password(loggedin_user_password):  # nopep8
+            raise WrongUserPassword(
+                'Wrong password for authenticated user {}'. format(self._user.user_id)  # nopep8
+            )
+        self.update(
+            user=user,
+            email=email,
+            do_save=do_save,
+        )
+        return user
+
+    def _check_email(self, email: str) -> bool:
+        # TODO - G.M - 2018-07-05 - find a better way to check email
+        if not email:
+            return False
+        email = email.split('@')
+        if len(email) != 2:
+            return False
+        return True
 
     def update(
             self,
@@ -118,22 +243,39 @@ class UserApi(object):
             name: str=None,
             email: str=None,
             password: str=None,
-            timezone: str='',
+            timezone: str=None,
+            groups: typing.Optional[typing.List[Group]]=None,
             do_save=True,
-    ) -> None:
+    ) -> User:
         if name is not None:
             user.display_name = name
 
         if email is not None:
+            email_exist = self._check_email(email)
+            if not email_exist:
+                raise EmailValidationFailed('Email given form {} is uncorrect'.format(email))  # nopep8
             user.email = email
 
         if password is not None:
             user.password = password
 
-        user.timezone = timezone
+        if timezone is not None:
+            user.timezone = timezone
+
+        if groups is not None:
+            # INFO - G.M - 2018-07-18 - Delete old groups
+            for group in user.groups:
+                if group not in groups:
+                    user.groups.remove(group)
+            # INFO - G.M - 2018-07-18 - add new groups
+            for group in groups:
+                if group not in user.groups:
+                    user.groups.append(group)
 
         if do_save:
             self.save(user)
+
+        return user
 
     def create_user(
         self,
@@ -176,7 +318,11 @@ class UserApi(object):
         """Previous create_user method"""
         user = User()
 
+        email_exist = self._check_email(email)
+        if not email_exist:
+            raise EmailValidationFailed('Email given form {} is uncorrect'.format(email))  # nopep8
         user.email = email
+        user.display_name = email.split('@')[0]
 
         for group in groups:
             user.groups.append(group)
@@ -187,6 +333,16 @@ class UserApi(object):
             self._session.flush()
 
         return user
+
+    def enable(self, user: User, do_save=False):
+        user.is_active = True
+        if do_save:
+            self.save(user)
+
+    def disable(self, user:User, do_save=False):
+        user.is_active = False
+        if do_save:
+            self.save(user)
 
     def save(self, user: User):
         self._session.flush()

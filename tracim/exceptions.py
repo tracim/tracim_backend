@@ -121,6 +121,26 @@ class ContentNotFoundInTracimRequest(TracimException):
     pass
 
 
+class InvalidId(TracimException):
+    pass
+
+
+class InvalidContentId(InvalidId):
+    pass
+
+
+class InvalidCommentId(InvalidId):
+    pass
+
+
+class InvalidWorkspaceId(InvalidId):
+    pass
+
+
+class InvalidUserId(InvalidId):
+    pass
+
+
 class ContentNotFound(TracimException):
     pass
 
@@ -130,4 +150,56 @@ class ContentTypeNotAllowed(TracimException):
 
 
 class WorkspacesDoNotMatch(TracimException):
+    pass
+
+
+class PasswordDoNotMatch(TracimException):
+    pass
+
+
+class EmptyValueNotAllowed(TracimException):
+    pass
+
+
+class EmptyLabelNotAllowed(EmptyValueNotAllowed):
+    pass
+
+
+class EmptyCommentContentNotAllowed(EmptyValueNotAllowed):
+    pass
+
+
+class UserNotActive(TracimException):
+    pass
+
+
+class NoUserSetted(TracimException):
+    pass
+
+
+class RoleDoesNotExist(TracimException):
+    pass
+
+
+class EmailValidationFailed(TracimException):
+    pass
+
+
+class UserCreationFailed(TracimException):
+    pass
+
+
+class ParentNotFound(NotFound):
+    pass
+
+
+class RevisionDoesNotMatchThisContent(TracimException):
+    pass
+
+
+class PageOfPreviewNotFound(NotFound):
+    pass
+
+
+class PreviewDimNotAllowed(TracimException):
     pass
